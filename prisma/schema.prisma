@@ -1,0 +1,221 @@
+// Sheggar Wheels — Peer-to-peer car rental platform
+// Database schema (SQLite via Prisma). For demo/portfolio use.
+// Improvement over the original brief: real database (replaces localStorage),
+// real authentication (replaces sessionStorage demo session), server-side
+// ownership checks, and an audit log for admins.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Roles are stored as a JSON-encoded string array because SQLite cannot
+// store native lists. e.g. '["renter","owner"]'. An account may have both
+// renter and owner capabilities (the brief explicitly allows this).
+// status: 'active' | 'suspended'
+// mustChangePassword: true for accounts created by an admin with a temporary
+// password; the user is forced to set a new one at first sign-in.
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String
+  phone       String?
+  passwordHash String? // demo-only hashed credential (never store plaintext)
+  roles       String   @default("[\"renter\"]") // JSON-encoded string[]
+  status      String   @default("active") // 'active' | 'suspended'
+  mustChangePassword Boolean @default(false)
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cars             Car[]
+  renterBookings   Booking[] @relation("RenterBookings")
+  ownerBookings    Booking[] @relation("OwnerBookings")
+  reviewsAsRenter  Review[]  @relation("ReviewRenter")
+  reviewsAsOwner   Review[]  @relation("ReviewOwner")
+  disputesOpened   Dispute[] @relation("DisputeOpener")
+  disputesResolved Dispute[] @relation("DisputeResolver")
+  announcements    Announcement[]
+  activityLogs     ActivityLog[]
+  sessions         Session[]
+}
+
+// status: 'draft' | 'pending' | 'approved' | 'rejected' | 'inactive'
+model Car {
+  id            String   @id @default(cuid())
+  ownerId       String
+  make          String
+  model         String
+  year           Int
+  transmission   String   // 'automatic' | 'manual'
+  seats          Int
+  fuel           String   @default("petrol") // 'petrol' | 'diesel' | 'hybrid' | 'electric'
+  city           String   @default("Addis Ababa")
+  neighbourhood  String
+  latitude       Float
+  longitude      Float
+  pricePerDay    Float    // ETB per day
+  photos         String   @default("[]") // JSON-encoded string[] of URLs
+  description    String   @default("")
+  status         String   @default("pending") // see comment above
+  unavailableDates String @default("[]") // JSON-encoded ISO date string[]
+  views          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  owner    User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+  reviews  Review[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([neighbourhood])
+  @@index([pricePerDay])
+}
+
+// Booking lifecycle (status):
+//   requested → confirmed | declined | cancelled
+//   confirmed → in_progress | cancelled
+//   in_progress → completed | disputed
+//   completed  → reviewed
+//   disputed   → resolved
+//   reviewed, declined, cancelled, resolved are terminal.
+// paymentStatus: 'unpaid' | 'held' | 'paid' | 'refunded'
+// Booking lifecycle (status):
+//   requested → confirmed | declined | cancelled
+//   confirmed → in_progress | cancelled
+//   in_progress → completed | disputed
+//   completed  → reviewed
+//   disputed   → resolved
+//   reviewed, declined, cancelled, resolved are terminal.
+// paymentStatus: 'unpaid' | 'held' | 'paid' | 'refunded'
+// payoutStatus: 'pending' | 'sent'
+model Booking {
+  id            String   @id @default(cuid())
+  carId         String
+  renterId      String
+  ownerId       String
+  startDate     String   // ISO date YYYY-MM-DD
+  endDate       String   // ISO date YYYY-MM-DD
+  days          Int
+  pricePerDay   Float    // snapshot of car price at booking time
+  subtotal      Float
+  fee           Float    // platform fee
+  total         Float
+  paymentStatus String   @default("unpaid")
+  status        String   @default("requested")
+  pickupLocation String?
+  notes          String?
+
+  payeePhone     String?  // owner's phone, copied from User at payment time
+  payoutStatus   String   @default("pending")
+  payoutAmount   Float?   // subtotal; the platform keeps the fee
+  transactionRef String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  car      Car   @relation(fields: [carId], references: [id], onDelete: Cascade)
+  renter   User  @relation("RenterBookings", fields: [renterId], references: [id], onDelete: Cascade)
+  owner    User  @relation("OwnerBookings", fields: [ownerId], references: [id], onDelete: Cascade)
+  review   Review?
+  dispute  Dispute?
+
+  @@index([carId])
+  @@index([renterId])
+  @@index([ownerId])
+  @@index([status])
+}
+// One review per completed booking.
+model Review {
+  id          String   @id @default(cuid())
+  bookingId   String   @unique
+  carId       String
+  renterId    String
+  ownerId     String
+  rating      Int      // 1-5
+  comment     String
+  ownerReply  String?
+  createdAt   DateTime @default(now())
+  repliedAt   DateTime?
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  car     Car     @relation(fields: [carId], references: [id], onDelete: Cascade)
+  renter  User    @relation("ReviewRenter", fields: [renterId], references: [id], onDelete: Cascade)
+  owner   User    @relation("ReviewOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([carId])
+}
+
+// status: 'open' | 'resolved'
+model Dispute {
+  id              String   @id @default(cuid())
+  bookingId       String   @unique
+  openedBy        String
+  reason          String   // e.g. 'damage', 'late_return', 'payment', 'other'
+  description     String
+  status          String   @default("open")
+  resolutionNotes String?
+  resolvedById    String?
+  createdAt       DateTime @default(now())
+  resolvedAt      DateTime?
+
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  opener    User    @relation("DisputeOpener", fields: [openedBy], references: [id], onDelete: Cascade)
+  resolver  User?   @relation("DisputeResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+}
+
+// active: whether the announcement is currently shown to users
+model Announcement {
+  id         String   @id @default(cuid())
+  title      String
+  message    String
+  active     Boolean  @default(true)
+  createdById String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+}
+
+// Audit log for admin visibility (an improvement over the brief's admin dashboard).
+// action: 'login' | 'booking_create' | 'booking_status_change' | 'car_create' | 'car_status_change' | ...
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  targetType String? // 'user' | 'car' | 'booking' | 'review' | 'dispute' | 'announcement'
+  targetId   String?
+  metadata   String? // JSON-encoded details
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// NextAuth.js session model. Required for the database strategy.
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  createdAt  DateTime @default(now())
+}
