@@ -39,52 +39,66 @@ export default async function CarsPage({
   const page = Math.max(1, Number(sp.page) || 1)
   const sortValue = SORTS.includes(sp.sort ?? '') ? sp.sort! : 'newest'
 
-  const where: any = { status: 'approved' }
-  if (sp.q) {
-    where.OR = [
-      { make: { contains: sp.q } },
-      { model: { contains: sp.q } },
-      { description: { contains: sp.q } },
-    ]
-  }
-  if (sp.neighbourhood) where.neighbourhood = sp.neighbourhood
-  if (sp.transmission) where.transmission = sp.transmission
-  if (sp.minSeats) where.seats = { gte: Number(sp.minSeats) }
-  if (sp.minPrice || sp.maxPrice) {
-    where.pricePerDay = {}
-    if (sp.minPrice) where.pricePerDay.gte = Number(sp.minPrice)
-    if (sp.maxPrice) where.pricePerDay.lte = Number(sp.maxPrice)
-  }
+  let total = 0
+  let cars: any[] = []
+  let neighbourhoods: string[] = []
+  let hasBadges = Boolean(sp.neighbourhood) || Boolean(sp.transmission) || Boolean(sp.minPrice) || Boolean(sp.maxPrice) || Boolean(sp.minSeats)
 
-  const orderBy: any = (() => {
-    switch (sortValue) {
-      case 'price-asc': return { pricePerDay: 'asc' }
-      case 'price-desc': return { pricePerDay: 'desc' }
-      case 'popular': return { views: 'desc' }
-      default: return { createdAt: 'desc' }
+  try {
+    const where: any = { status: 'approved' }
+    if (sp.q) {
+      where.OR = [
+        { make: { contains: sp.q } },
+        { model: { contains: sp.q } },
+        { description: { contains: sp.q } },
+      ]
     }
-  })()
+    if (sp.neighbourhood) where.neighbourhood = sp.neighbourhood
+    if (sp.transmission) where.transmission = sp.transmission
+    if (sp.minSeats) where.seats = { gte: Number(sp.minSeats) }
+    if (sp.minPrice || sp.maxPrice) {
+      where.pricePerDay = {}
+      if (sp.minPrice) where.pricePerDay.gte = Number(sp.minPrice)
+      if (sp.maxPrice) where.pricePerDay.lte = Number(sp.maxPrice)
+    }
 
-  const [total, cars, allNeighbourhoods] = await Promise.all([
-    db.car.count({ where }),
-    db.car.findMany({
-      where,
-      orderBy,
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      include: { reviews: { select: { rating: true } } },
-    }),
-    db.car.findMany({
-      where: { status: 'approved' },
-      select: { neighbourhood: true },
-      distinct: ['neighbourhood'],
-    }),
-  ])
+    const orderBy: any = (() => {
+      switch (sortValue) {
+        case 'price-asc': return { pricePerDay: 'asc' }
+        case 'price-desc': return { pricePerDay: 'desc' }
+        case 'popular': return { views: 'desc' }
+        default: return { createdAt: 'desc' }
+      }
+    })()
+
+    const [count, dbCars, allNeighbourhoods] = await Promise.all([
+      db.car.count({ where }),
+      db.car.findMany({
+        where,
+        orderBy,
+        skip: (page - 1) * PAGE_SIZE,
+        take: PAGE_SIZE,
+        include: { reviews: { select: { rating: true } } },
+      }),
+      db.car.findMany({
+        where: { status: 'approved' },
+        select: { neighbourhood: true },
+        distinct: ['neighbourhood'],
+      }),
+    ])
+
+    total = count
+    cars = dbCars
+    neighbourhoods = allNeighbourhoods.map((c) => c.neighbourhood).sort()
+  } catch (error) {
+    console.error('Cars page database error:', error)
+    total = 0
+    cars = []
+    neighbourhoods = []
+    hasBadges = false
+  }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const neighbourhoods = allNeighbourhoods.map((c) => c.neighbourhood).sort()
-  const hasBadges =
-    sp.neighbourhood || sp.transmission || sp.minPrice || sp.maxPrice || sp.minSeats
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
