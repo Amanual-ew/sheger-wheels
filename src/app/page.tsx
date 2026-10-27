@@ -1,6 +1,4 @@
 import Link from 'next/link'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { CarCard } from '@/components/car-card'
 import { Button } from '@/components/ui/button'
@@ -12,7 +10,7 @@ import {
   Search, Megaphone, KeyRound, ChevronDown,
 } from 'lucide-react'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 300
 
 const NEIGHBOURHOODS = [
   'Bole', 'Kazanchis', 'Piassa', 'Merkato', 'Sarbet', 'Megenagna', '4 Kilo',
@@ -92,15 +90,6 @@ async function getStats() {
 
 export default async function HomePage() {
   try {
-    const session = await getServerSession(authOptions)
-    const signedIn = Boolean(session?.user)
-    const roles = String((session?.user as any)?.roles ?? '')
-    const dashboardHref = roles.includes('admin')
-      ? '/admin'
-      : roles.includes('owner')
-        ? '/owner'
-        : '/dashboard'
-
     const [featuredCars, announcements, stats] = await Promise.all([
       getFeaturedCars(),
       getActiveAnnouncements(),
@@ -140,11 +129,7 @@ export default async function HomePage() {
                     </Link>
                   </Button>
                   <Button asChild size="lg" variant="outline">
-                    {signedIn ? (
-                      <Link href={dashboardHref}>Go to my dashboard</Link>
-                    ) : (
-                      <Link href="/signup">Create an account</Link>
-                    )}
+                    <Link href="/signup">Create an account</Link>
                   </Button>
                 </div>
 
@@ -399,8 +384,8 @@ export default async function HomePage() {
                 </p>
               </div>
               <Button asChild size="lg">
-                <Link href={signedIn ? dashboardHref : '/signup'}>
-                  {signedIn ? 'Open my dashboard' : 'List your car'}
+                <Link href="/signup">
+                  List your car
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
