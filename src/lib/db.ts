@@ -9,6 +9,16 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+export function hasDatabaseConfig() {
+  return Boolean(process.env.DATABASE_URL)
+}
+
+if (!process.env.DATABASE_URL) {
+  console.warn(
+    'DATABASE_URL is not configured. Database-backed features will be unavailable until Vercel environment variables are set.',
+  )
+}
+
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({

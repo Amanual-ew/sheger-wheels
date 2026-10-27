@@ -43,34 +43,51 @@ const FAQ = [
   },
 ]
 
+const EMPTY_STATS = { cars: 0, bookings: 0, areas: [] as Array<{ neighbourhood: string; _count: number }> }
+
 async function getFeaturedCars() {
-  return db.car.findMany({
-    where: { status: 'approved' },
-    orderBy: [{ views: 'desc' }, { createdAt: 'desc' }],
-    take: 6,
-    include: { reviews: { select: { rating: true } } },
-  })
+  try {
+    return await db.car.findMany({
+      where: { status: 'approved' },
+      orderBy: [{ views: 'desc' }, { createdAt: 'desc' }],
+      take: 6,
+      include: { reviews: { select: { rating: true } } },
+    })
+  } catch (error) {
+    console.error('Failed to load featured cars:', error)
+    return []
+  }
 }
 
 async function getActiveAnnouncements() {
-  return db.announcement.findMany({
-    where: { active: true },
-    orderBy: { createdAt: 'desc' },
-    take: 2,
-  })
+  try {
+    return await db.announcement.findMany({
+      where: { active: true },
+      orderBy: { createdAt: 'desc' },
+      take: 2,
+    })
+  } catch (error) {
+    console.error('Failed to load announcements:', error)
+    return []
+  }
 }
 
 async function getStats() {
-  const [cars, bookings, byArea] = await Promise.all([
-    db.car.count({ where: { status: 'approved' } }),
-    db.booking.count(),
-    db.car.groupBy({
-      by: ['neighbourhood'],
-      where: { status: 'approved' },
-      _count: true,
-    }),
-  ])
-  return { cars, bookings, areas: byArea }
+  try {
+    const [cars, bookings, byArea] = await Promise.all([
+      db.car.count({ where: { status: 'approved' } }),
+      db.booking.count(),
+      db.car.groupBy({
+        by: ['neighbourhood'],
+        where: { status: 'approved' },
+        _count: true,
+      }),
+    ])
+    return { cars, bookings, areas: byArea }
+  } catch (error) {
+    console.error('Failed to load homepage stats:', error)
+    return EMPTY_STATS
+  }
 }
 
 export default async function HomePage() {
