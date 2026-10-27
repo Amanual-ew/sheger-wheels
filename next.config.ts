@@ -3,15 +3,14 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   experimental: {
     agentFeedback: true,
-   
   },
   images: {
     formats: ["image/avif", "image/webp"],
-    // Only needed if your car photos are remote URLs.
-    // Replace with the real host(s) your photos come from.
+    qualities: [70, 75],
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'plus.unsplash.com' },
+      { protocol: 'https', hostname: 'mekina.s3.eu-west-1.amazonaws.com' },
     ],
   },
 };
