@@ -6,7 +6,7 @@ import { Providers } from "@/components/providers";
 import { SiteChrome } from "@/components/site-chrome";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://shegerwheel.com"),
+  metadataBase: new URL("https://sheger-wheels-mu.vercel.app"),
   applicationName: "Sheggar Wheels",
   title: {
     default: "Sheggar Wheels | Peer-to-peer car rental in Addis Ababa",
