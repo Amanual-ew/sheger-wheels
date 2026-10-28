@@ -6,35 +6,65 @@ import { Providers } from "@/components/providers";
 import { SiteChrome } from "@/components/site-chrome";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://shegerwheel.com"),
+  applicationName: "Sheggar Wheels",
   title: {
-    default: "Sheggar Wheels — Peer-to-peer car rental in Addis Ababa",
-    template: "%s · Sheggar Wheels",
+    default: "Sheggar Wheels | Peer-to-peer car rental in Addis Ababa",
+    template: "%s | Sheggar Wheels",
   },
   description:
-    "Sheggar Wheels is a peer-to-peer car rental marketplace for Addis Ababa. Car owners publish vehicles, set prices, and respond to booking requests; customers browse cars, request rentals, and leave reviews.",
+    "Find trusted cars for rent in Addis Ababa through Sheggar Wheels. Browse listings, request bookings, and manage rentals with a secure peer-to-peer car marketplace.",
   keywords: [
-    "car rental",
-    "Addis Ababa",
-    "peer-to-peer",
-    "marketplace",
-    "Ethiopia",
-    "Next.js",
-    "Prisma",
-    "NextAuth",
+    "car rental Addis Ababa",
+    "peer-to-peer car rental",
+    "Ethiopia car rental",
+    "rent a car in Addis",
+    "Sheggar Wheels",
+    "car marketplace",
+    "book a car in Addis Ababa",
   ],
-  authors: [{ name: "Sheggar Wheels Demo" }],
+  authors: [{ name: "Sheggar Wheels" }],
+  creator: "Sheggar Wheels",
+  publisher: "Sheggar Wheels",
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   openGraph: {
-    title: "Sheggar Wheels",
-    description:
-      "Peer-to-peer car rental marketplace for Addis Ababa. Browse cars, request rentals, manage bookings, leave reviews.",
-    type: "website",
-    locale: "en_US",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Sheggar Wheels",
-    description: "Peer-to-peer car rental marketplace for Addis Ababa.",
-  },
+  siteName: "Sheggar Wheels",
+  title: "Sheggar Wheels | Peer-to-peer car rental in Addis Ababa",
+  description:
+    "Browse trusted rental cars, request bookings, and manage your rides in Addis Ababa with Sheggar Wheels.",
+  type: "website",
+  locale: "en_ET",
+  url: "https://sheger-wheels-mu.vercel.app/",
+  images: [
+    {
+      url: "/sheger-wheels-og.png",
+      width: 1200,
+      height: 630,
+      alt: "Sheggar Wheels peer-to-peer car rental in Addis Ababa, Ethiopia",
+    },
+  ],
+},
+twitter: {
+  card: "summary_large_image",
+  title: "Sheggar Wheels | Peer-to-peer car rental in Addis Ababa",
+  description:
+    "Browse verified cars, request rentals, and manage bookings in Addis Ababa.",
+  creator: "@shegerwheels",
+  images: ["/sheger-wheels-og.png"],
+},
 };
 
 export default function RootLayout({
